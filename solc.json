@@ -1,0 +1,3 @@
+{
+   "remappings": [ "@openzeppelin/=/home/jhoon70/Projects/truffle/edum/node_modules/@openzeppelin/" ]
+}

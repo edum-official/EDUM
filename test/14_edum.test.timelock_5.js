@@ -1,0 +1,60 @@
+const { expectRevert } = require("@openzeppelin/test-helpers");
+const EDUMCoin = artifacts.require("EDUM");
+const { toWei, assertBalance, assertOwnership, assertAllowance, waitForListed } = require("./common/test_common.js");
+
+contract('EDUMCoin', function([d1, d2, m1, m2, a1, a2, a3]) {
+  describe('transferPreTimelock -> 상장 -> transferTimelock -> Release', function() {
+    let listedDate = 0;
+    before(async function() {
+      this.token = await EDUMCoin.new({ from: d1 });
+      await this.token.setControllers([m1, m2], {from: d1 });
+      await this.token.transfer(m1, toWei('1001'), { from: d1 });
+    });
+
+    it('transferPreTimelock. LockInfo (3초,100) (6초,200)', async function() {
+        await this.token.transferPreTimelock(a1, [toWei('100'), toWei('200')], [3, 20], { from: m1 });
+        await assertBalance(this.token, a1, toWei('300'), toWei('300'));
+
+        await this.token.transferPreTimelock(a2, [toWei('200'), toWei('100')], [10, 15], { from: m1 });
+        await assertBalance(this.token, a2, toWei('300'), toWei('300'));
+    });
+
+    it('setListingDate', async function() {
+        await this.token.setListingDate(Math.round(Date.now()/1000),{from: d1});
+        await this.token.getListingDate().then((_listedDate) => listedDate = parseInt(_listedDate.toString()));
+        console.log('\tListedDate: %s', listedDate);
+    });
+
+    it('3초 후 100 토큰 Release', async function() {
+        await waitForListed(d1, this.token, 3);
+        await assertBalance(this.token, a1, toWei('300'), toWei('200'));
+    });
+
+    it('일부 토큰이 락이 걸려 있어 200 토큰 전송 불가', async function() {
+        await expectRevert.unspecified(
+            this.token.transfer(a2, toWei('200'), { from: a1 })
+        );
+    });
+
+    it('Release 토큰은 전송 가능', async function() {
+        await this.token.transfer(a2, toWei('100'), { from: a1 })
+        await assertBalance(this.token, a1, toWei('200'), toWei('200'));
+        await assertBalance(this.token, a2, toWei('400'), toWei('300'));
+    });
+
+    it('상장 후 transferTimelock', async function() {
+        await this.token.transferTimelock(a1, [toWei('100'), toWei('200')], [listedDate+15, listedDate+30], { from: m1 });
+        await assertBalance(this.token, a1, toWei('500'), toWei('500'));
+
+        let tokenLockInfo = await this.token.getTokenlockStates(a1);
+        assert.equal(tokenLockInfo.minReleaseTime, listedDate+15);
+        assert.equal(tokenLockInfo.lockInfo.length, 3);
+        assert.equal(tokenLockInfo.lockInfo[0].amount, toWei('200'));
+        assert.equal(tokenLockInfo.lockInfo[0].releaseTime, listedDate+20);
+        assert.equal(tokenLockInfo.lockInfo[1].amount, toWei('100'));
+        assert.equal(tokenLockInfo.lockInfo[1].releaseTime, listedDate+15);
+        assert.equal(tokenLockInfo.lockInfo[2].amount, toWei('200'));
+        assert.equal(tokenLockInfo.lockInfo[2].releaseTime, listedDate+30);
+    });
+  });
+});
