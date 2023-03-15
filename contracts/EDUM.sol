@@ -283,7 +283,7 @@ contract EDUM is ERC20, Ownable {
     * @dev 토큰 Lock 전송. 상장 전 호출 가능. 
     * @param _addr The address to transfer to.
     * @param _amount The amount to be transferred.
-    * @param _releaseTime The timestamp to unlock token.
+    * @param _releaseTime Seconds to unlock the token based on the listing date. (If it is 3600, 3600 seconds after listing)
     * @return The result of transferPreTimelock
     */
     function transferPreTimelock(address _addr, uint256[] memory _amount, uint256[] memory _releaseTime)
