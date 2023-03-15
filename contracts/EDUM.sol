@@ -377,18 +377,4 @@ contract EDUM is ERC20, Ownable {
     function burn(uint256 _amount) external {
         _burn(_msgSender(), _amount);
     }
-
-    /*
-    /////////////////////////////////
-    // for test
-    /////////////////////////////////
-    function getLockedCount(address _account) public view returns (uint) {
-        return lockStates[_account].lockInfo.length;
-    }
-
-    event Dummy(uint value);
-    function dummy() public {
-        emit Dummy(0);
-    }
-    */
 }
